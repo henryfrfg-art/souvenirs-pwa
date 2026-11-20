@@ -83,7 +83,7 @@ let lp,showI=false,nh=0,nd2=iso(new Date()),LM=null,LV=null,FOC=null;
 let LOVE=JSON.parse(L('love')||'null')||['Bisou 😘','Câlin 🤗','Tu me manques 🥺',"Je t'aime ❤️"],draft='',lp2,lpFired=false;
 const ago=i=>{if(!i)return'';const m=Math.max(0,Math.round((Date.now()-new Date(i))/6e4));return m<1?"à l'instant":m<60?'il y a '+m+' min':m<1440?'il y a '+Math.round(m/60)+' h':'il y a '+Math.round(m/1440)+' j'};
 function ideasList(){return `<div class="card"><h2>Toutes les idées (${db.ideas.length})</h2>${db.ideas.map((t,i)=>`<div class="row sp" style="padding:8px 0;border-bottom:1px solid var(--ln)"><span style="flex:1;cursor:pointer" onclick="ideaI=${i};showI=false;render()">${esc(t)}</span><button class="l" onclick="editIdea(${i})">✏️</button><button class="d" onclick="delIdea(${i})">🗑️</button></div>`).join('')}<button class="g" style="margin-top:10px" onclick="showI=false;render()">Fermer</button></div>`}
-async function delIdea(i){if(!confirm('Supprimer cette idée ?'))return;await api('/ideas/'+i,{method:'DELETE'});ideaI=0;load()}
+async function delIdea(i){db.ideas.splice(i,1);ideaI=0;render();try{await api('/ideas/'+i,{method:'DELETE'})}catch(e){toast('Erreur, réessaie')}load()}
 async function editIdea(i){const t=prompt("Modifier l'idée :",db.ideas[i]);if(t&&t.trim()){await api('/ideas/'+i,{method:'DELETE'});await api('/ideas',{method:'POST',body:JSON.stringify({text:t.trim()})});load()}}
 const pad=n=>String(n).padStart(2,'0');let nvm=new Date().getMonth(),nvy=new Date().getFullYear(),nsel=null;
 function nails(){const me=L('name'),by={},hs=n=>'♥'.repeat(n)+'♡'.repeat(10-n),ten=[1,2,3,4,5,6,7,8,9,10];(db.nails||[]).forEach(n=>{const d=pd(n.date);if(d.getMonth()==nvm&&d.getFullYear()==nvy)by[d.getDate()]=n});
