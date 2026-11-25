@@ -54,12 +54,17 @@ function season(){const m=new Date().getMonth();return m<2||m==11?'winter':m<5?'
 function setTheme(t){S('theme2',t);document.body.dataset.t=t;const b=document.body.style;['--ac','--ac2'].forEach(k=>b.removeProperty(k));if(t=='v1'||t=='v1d'){const a=SEA[season()],d=t=='v1d';b.setProperty('--ac',d?a[2]:a[0]);b.setProperty('--ac2',d?a[3]:a[1])}document.querySelector('meta[name=theme-color]')||document.head.insertAdjacentHTML('beforeend','<meta name="theme-color">');document.querySelector('meta[name=theme-color]').content=getComputedStyle(document.body).getPropertyValue('--bg')}
 function shrink(f){return new Promise(ok=>{const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{const k=Math.min(1,1000/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=i.width*k;c.height=i.height*k;c.getContext('2d').drawImage(i,0,0,c.width,c.height);ok(c.toDataURL('image/jpeg',.6))};i.src=r.result};r.readAsDataURL(f)})}
 async function pick(el){for(const f of el.files)photos.push(await shrink(f));render()}
-const photoCount=a=>a.reduce((n,m)=>n+(m.photos||[]).length,0);
+const photoCount=a=>a.reduce((n,m)=>n+(m.pk||[]).length,0);
 function imgs(a){return `<div class="ph">${(a||[]).map(p=>`<img src="${p}" onclick="zoom(this.src)">`).join('')}</div>`}
+const PH={},FP={};
+const purl=(k,id,i,pk)=>SERVER+'/photo/'+k+'/'+id+'/'+i+'?h='+pk;
+function rimgs(kind,it){return `<div class="ph">${(it.pk||[]).map((pk,i)=>{const u=purl(kind,it.id,i,pk);return `<img data-u="${u}" src="${PH[u]||'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA='}" onclick="zoom(this.src)" style="background:var(--ac2)">`}).join('')}</div>`}
+function getPh(u){return FP[u]||(FP[u]=(async()=>{try{const c=await caches.open('ph1');let r=await c.match(u);if(!r){r=await fetch(u,{headers:{'x-code':L('code')}});if(!r.ok){delete FP[u];return ''}await c.put(u,r.clone())}return PH[u]=URL.createObjectURL(await r.blob())}catch(e){delete FP[u];return ''}})())}
+function fillPhotos(){document.querySelectorAll('img[data-u]').forEach(async im=>{const u=im.dataset.u,b=PH[u]||await getPh(u);if(b&&im.isConnected&&im.dataset.u===u)im.src=b})}
 function zoom(s){$('lbi').src=s;$('lb').style.display='flex'}
 function card(m){
  if(editId===m.id)return `<div class="card"><h2>Modifier</h2><textarea id="et">${esc(m.text)}</textarea><input id="ed" type="date" value="${m.date}"><div class="row" style="margin-top:10px"><button onclick="saveEdit(${m.id})">Enregistrer</button><button class="g" onclick="editId=null;render()">Annuler</button></div></div>`;
- return `<div class="card"><h2>${pd(m.date).toLocaleDateString('fr-FR')}${m.addedBy?' · '+esc(m.addedBy):''}</h2><div>${esc(m.text)}</div>${imgs(m.photos)}
+ return `<div class="card"><h2>${pd(m.date).toLocaleDateString('fr-FR')}${m.addedBy?' · '+esc(m.addedBy):''}</h2><div>${esc(m.text)}</div>${rimgs('memories',m)}
  <div class="row">${delId===m.id?`<span>Supprimer ?</span><button class="d" onclick="del(${m.id})">Oui</button><button class="l" onclick="delId=null;render()">Non</button>`:`<button class="l" onclick="editId=${m.id};render()">✏️ Modifier</button><button class="d" onclick="delId=${m.id};render()">🗑️ Supprimer</button>`}</div></div>`}
 async function saveEdit(id){await api('/memories/'+id,{method:'PUT',body:JSON.stringify({text:$('et').value.trim(),date:$('ed').value})});editId=null;toast('Souvenir modifié');load()}
 async function del(id){await api('/memories/'+id,{method:'DELETE'});delId=null;toast('Souvenir supprimé');load()}
@@ -95,10 +100,10 @@ async function editIdea(i){const t=prompt("Modifier l'idée :",db.ideas[i]);if(t
 const pad=n=>String(n).padStart(2,'0');let nvm=new Date().getMonth(),nvy=new Date().getFullYear(),nsel=null;
 function nails(){const me=L('name'),by={},hs=n=>'♥'.repeat(n)+'♡'.repeat(10-n),ten=[1,2,3,4,5,6,7,8,9,10];(db.nails||[]).forEach(n=>{const d=pd(n.date);if(d.getMonth()==nvm&&d.getFullYear()==nvy)by[d.getDate()]=n});
  const f=(new Date(nvy,nvm,1).getDay()+6)%7,nd=new Date(nvy,nvm+1,0).getDate();let c='';for(let i=0;i<f;i++)c+='<span></span>';
- for(let d=1;d<=nd;d++){const n=by[d],k=n?(n.photos||[]).length:0,lab=!n?d:k>1?'💅'+k:'💅';c+=`<button class="c ${n?'h':''} ${nsel==d?'s':''} ${String(lab).length>2?'sm':''}" onclick="nsel=${nsel==d?'null':d};nh=0;photos=[];render()">${lab}</button>`}
+ for(let d=1;d<=nd;d++){const n=by[d],k=n?(n.pk||[]).length:0,lab=!n?d:k>1?'💅'+k:'💅';c+=`<button class="c ${n?'h':''} ${nsel==d?'s':''} ${String(lab).length>2?'sm':''}" onclick="nsel=${nsel==d?'null':d};nh=0;photos=[];render()">${lab}</button>`}
  const ds=nsel?`${nvy}-${pad(nvm+1)}-${pad(nsel)}`:'',e=nsel?by[nsel]:null;
  return `<h1>💅 Ongles</h1><div class="card"><div class="row sp"><button class="l" onclick="nvm--;if(nvm<0){nvm=11;nvy--}nsel=null;render()">‹</button><b>${MONTHS[nvm]} ${nvy}</b><button class="l" onclick="nvm++;if(nvm>11){nvm=0;nvy++}nsel=null;render()">›</button></div><div class="grid" style="margin-top:8px">${['L','M','M','J','V','S','D'].map(x=>`<b>${x}</b>`).join('')}${c}</div></div>
- ${e?`<div class="card"><h2>${pd(e.date).toLocaleDateString('fr-FR')}</h2>${imgs(e.photos)}${Object.entries(e.votes||{}).map(([k,v])=>`<div style="margin-top:8px"><span style="color:var(--mu);font-size:13px">${esc(k)}</span><div style="font-size:22px;color:var(--ac)">${hs(v)}</div></div>`).join('')}<div class="row"><button class="d" onclick="delN(${e.id})">🗑️ Supprimer cette entrée</button></div></div>`:''}
+ ${e?`<div class="card"><h2>${pd(e.date).toLocaleDateString('fr-FR')}</h2>${rimgs('nails',e)}${Object.entries(e.votes||{}).map(([k,v])=>`<div style="margin-top:8px"><span style="color:var(--mu);font-size:13px">${esc(k)}</span><div style="font-size:22px;color:var(--ac)">${hs(v)}</div></div>`).join('')}<div class="row"><button class="d" onclick="delN(${e.id})">🗑️ Supprimer cette entrée</button></div></div>`:''}
  ${nsel?`<div class="card"><h2>${e?'Ta note, '+esc(me||'…'):'Noter ce jour'}${e?'':' · '+esc(me||'')}</h2><div style="font-size:26px;color:var(--ac)">${ten.map(i=>`<span style="cursor:pointer" onclick="nh=${i};render()">${i<=nh?'♥':'♡'}</span>`).join('')}</div><div class="row" style="margin-top:10px"><label style="padding:11px 16px;border-radius:24px;background:var(--ac2);cursor:pointer">📷 Photos<input type="file" accept="image/*" multiple hidden onchange="pick(this)"></label><button onclick="voteN('${ds}')">Voter</button></div>${imgs(photos)}</div>`:''}`}
 async function voteN(d){if(!L('name'))return toast("Enregistre ton prénom dans Réglages");if(!nh)return toast('Choisis une note en cœurs');await api('/nails',{method:'POST',body:JSON.stringify({date:d,label:L('name'),hearts:nh,photos})});nh=0;photos=[];toast('Vote enregistré 💅');load()}
 async function setV(d,h){await api('/nails',{method:'POST',body:JSON.stringify({date:d,label:L('name'),hearts:h})});load()}
@@ -154,7 +159,7 @@ function render(){
  if(!L('code')){$('nav').innerHTML='';$('app').innerHTML='<div class="gate"><h1>💛 Souvenirs</h1><p>Entre votre code secret</p><input id="cd" type="password" placeholder="Code" style="text-align:center"><div style="margin-top:12px"><button onclick="S(\'code\',$(\'cd\').value.trim());load()">Entrer</button></div></div>';return}
  $('nav').innerHTML=TABS.map(t=>`<button class="${tab==t[0]?'on':''}" onclick="go('${t[0]}')"><span style="font-size:23px;display:block">${t[1]}</span>${t[2]}</button>`).join('');
  if(!db){$('app').innerHTML='<div class="card">Chargement…</div>';return}
- const y=scrollY;$('app').innerHTML=tab=='home'?home():tab=='cal'?cal():tab=='map'?mapv():tab=='nails'?nails():settings();scrollTo(0,y);afterRender()}
+ const y=scrollY;$('app').innerHTML=tab=='home'?home():tab=='cal'?cal():tab=='map'?mapv():tab=='nails'?nails():settings();scrollTo(0,y);afterRender();fillPhotos()}
 setTheme(L('theme2')||'v1');if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
-render();if(L('code'))load();setInterval(()=>{if(L('code')&&!editId&&!document.activeElement.matches('input,textarea'))load()},20000);
+render();if(L('code'))load();setInterval(()=>{if(document.visibilityState=='visible'&&L('code')&&!editId&&!document.activeElement.matches('input,textarea'))load()},60000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible'&&L('code'))load()});
 </script></body></html>
