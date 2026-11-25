@@ -54,11 +54,11 @@ function season(){const m=new Date().getMonth();return m<2||m==11?'winter':m<5?'
 function setTheme(t){S('theme2',t);document.body.dataset.t=t;const b=document.body.style;['--ac','--ac2'].forEach(k=>b.removeProperty(k));if(t=='v1'||t=='v1d'){const a=SEA[season()],d=t=='v1d';b.setProperty('--ac',d?a[2]:a[0]);b.setProperty('--ac2',d?a[3]:a[1])}document.querySelector('meta[name=theme-color]')||document.head.insertAdjacentHTML('beforeend','<meta name="theme-color">');document.querySelector('meta[name=theme-color]').content=getComputedStyle(document.body).getPropertyValue('--bg')}
 function shrink(f){return new Promise(ok=>{const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{const k=Math.min(1,1000/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=i.width*k;c.height=i.height*k;c.getContext('2d').drawImage(i,0,0,c.width,c.height);ok(c.toDataURL('image/jpeg',.6))};i.src=r.result};r.readAsDataURL(f)})}
 async function pick(el){for(const f of el.files)photos.push(await shrink(f));render()}
-const photoCount=a=>a.reduce((n,m)=>n+(m.pk||[]).length,0);
+const photoCount=a=>a.reduce((n,m)=>n+(m.pk||m.photos||[]).length,0);
 function imgs(a){return `<div class="ph">${(a||[]).map(p=>`<img src="${p}" onclick="zoom(this.src)">`).join('')}</div>`}
 const PH={},FP={};
 const purl=(k,id,i,pk)=>SERVER+'/photo/'+k+'/'+id+'/'+i+'?h='+pk;
-function rimgs(kind,it){return `<div class="ph">${(it.pk||[]).map((pk,i)=>{const u=purl(kind,it.id,i,pk);return `<img data-u="${u}" src="${PH[u]||'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA='}" onclick="zoom(this.src)" style="background:var(--ac2)">`}).join('')}</div>`}
+function rimgs(kind,it){if(!(it.pk&&it.pk.length)&&it.photos&&it.photos.length)return imgs(it.photos);return `<div class="ph">${(it.pk||[]).map((pk,i)=>{const u=purl(kind,it.id,i,pk);return `<img data-u="${u}" src="${PH[u]||'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA='}" onclick="zoom(this.src)" style="background:var(--ac2)">`}).join('')}</div>`}
 function getPh(u){return FP[u]||(FP[u]=(async()=>{try{const c=await caches.open('ph1');let r=await c.match(u);if(!r){r=await fetch(u,{headers:{'x-code':L('code')}});if(!r.ok){delete FP[u];return ''}await c.put(u,r.clone())}return PH[u]=URL.createObjectURL(await r.blob())}catch(e){delete FP[u];return ''}})())}
 function fillPhotos(){document.querySelectorAll('img[data-u]').forEach(async im=>{const u=im.dataset.u,b=PH[u]||await getPh(u);if(b&&im.isConnected&&im.dataset.u===u)im.src=b})}
 function zoom(s){$('lbi').src=s;$('lb').style.display='flex'}
@@ -100,7 +100,7 @@ async function editIdea(i){const t=prompt("Modifier l'idée :",db.ideas[i]);if(t
 const pad=n=>String(n).padStart(2,'0');let nvm=new Date().getMonth(),nvy=new Date().getFullYear(),nsel=null;
 function nails(){const me=L('name'),by={},hs=n=>'♥'.repeat(n)+'♡'.repeat(10-n),ten=[1,2,3,4,5,6,7,8,9,10];(db.nails||[]).forEach(n=>{const d=pd(n.date);if(d.getMonth()==nvm&&d.getFullYear()==nvy)by[d.getDate()]=n});
  const f=(new Date(nvy,nvm,1).getDay()+6)%7,nd=new Date(nvy,nvm+1,0).getDate();let c='';for(let i=0;i<f;i++)c+='<span></span>';
- for(let d=1;d<=nd;d++){const n=by[d],k=n?(n.pk||[]).length:0,lab=!n?d:k>1?'💅'+k:'💅';c+=`<button class="c ${n?'h':''} ${nsel==d?'s':''} ${String(lab).length>2?'sm':''}" onclick="nsel=${nsel==d?'null':d};nh=0;photos=[];render()">${lab}</button>`}
+ for(let d=1;d<=nd;d++){const n=by[d],k=n?(n.pk||n.photos||[]).length:0,lab=!n?d:k>1?'💅'+k:'💅';c+=`<button class="c ${n?'h':''} ${nsel==d?'s':''} ${String(lab).length>2?'sm':''}" onclick="nsel=${nsel==d?'null':d};nh=0;photos=[];render()">${lab}</button>`}
  const ds=nsel?`${nvy}-${pad(nvm+1)}-${pad(nsel)}`:'',e=nsel?by[nsel]:null;
  return `<h1>💅 Ongles</h1><div class="card"><div class="row sp"><button class="l" onclick="nvm--;if(nvm<0){nvm=11;nvy--}nsel=null;render()">‹</button><b>${MONTHS[nvm]} ${nvy}</b><button class="l" onclick="nvm++;if(nvm>11){nvm=0;nvy++}nsel=null;render()">›</button></div><div class="grid" style="margin-top:8px">${['L','M','M','J','V','S','D'].map(x=>`<b>${x}</b>`).join('')}${c}</div></div>
  ${e?`<div class="card"><h2>${pd(e.date).toLocaleDateString('fr-FR')}</h2>${rimgs('nails',e)}${Object.entries(e.votes||{}).map(([k,v])=>`<div style="margin-top:8px"><span style="color:var(--mu);font-size:13px">${esc(k)}</span><div style="font-size:22px;color:var(--ac)">${hs(v)}</div></div>`).join('')}<div class="row"><button class="d" onclick="delN(${e.id})">🗑️ Supprimer cette entrée</button></div></div>`:''}
